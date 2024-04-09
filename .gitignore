@@ -1,0 +1,68 @@
+# Ignore node_modules directory in root and all packages
+node_modules/
+.venv/
+logs/
+cookies/
+
+# Ignore built files
+*.log
+*.log.*
+*.pem
+*.pid
+*.seed
+*.pid.lock
+*.modulehash
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore coverage directory
+coverage/
+
+# Ignore build directories
+/build/
+/dist/
+/out/
+
+# Ignore local .env files
+.env
+
+# Ignore yarn error logs
+yarn-error.log
+
+# Playground
+playground.ts
+
+# Ignore npm debug log
+npm-debug.log*
+
+# Ignore any .tsbuildinfo file
+*.tsbuildinfo
+
+# Ignore package-lock files
+package-lock.json
+yarn.lock
+Pipfile.lock
+
+# Ignore .idea directory for JetBrains IDEs
+.idea/
+
+# Ignore files and directories specific to OS or editors
+Thumbs.db
+.DS_Store
+desktop.ini
+*.swp
+.vs/
+*.idea/
+*.iml
+*.log
+*.log.*
+*.DS_Store
+*.npmrc
+*.pem
+
+# next.js
+*.next/
+*-env.d.ts
