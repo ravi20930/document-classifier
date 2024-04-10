@@ -5,8 +5,8 @@ const axios = require("axios");
 const cors = require("cors");
 
 const amqp = require("amqplib");
-const { connectDb } = require("./config/db.config");
-const UserPrompts = require("./models/db.model");
+const { connectDb } = require("./config/db");
+const UserPrompts = require("./models/UserPrompt");
 const { EXPRESS_PORT, DB_SYNC_FLAG, NODE_ENV, AMQP_URL, FLASK_SERVICE_URL } =
   process.env;
 const shouldSync = DB_SYNC_FLAG === "true";
@@ -58,7 +58,7 @@ app.post("/api/response", async (req, res) => {
     }
     userPrompt.response = response;
     await userPrompt.save();
-    return res.status(200).json("Prompt updated successfully");
+    return res.status(200).json({ message: "Response updated successfully" });
   } catch (error) {
     console.error("Error updating prompt:", error);
     return res.status(500).json({ error: "Internal Server Error" });
@@ -67,14 +67,14 @@ app.post("/api/response", async (req, res) => {
 
 // Default endpoint
 app.get("/api", async (req, res) => {
-  res.status(200).json("working");
+  res.status(200).json({ message: "hehehe, chal to rha h bhai." });
 });
 
 // Start the server
 app.listen(EXPRESS_PORT, async () => {
   await connectDb(shouldSync); // pass "true" to alter tables
   console.info(
-    "🚀 Express server started at port %d in %s mode. Time: %s",
+    "Express server started at port %d in %s mode. Time: %s",
     EXPRESS_PORT,
     NODE_ENV,
     new Date().toLocaleString()
