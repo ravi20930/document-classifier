@@ -5,6 +5,9 @@ import logging
 import os
 from hugchat import hugchat
 from hugchat.login import Login
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
 app = Flask(__name__)
 CORS(app, origins="*")

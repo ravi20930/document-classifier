@@ -1,24 +1,11 @@
 {
-  "name": "in-tool",
-  "version": "1.0.0",
-  "description": "linkedin tools",
-  "main": "app.js",
-  "author": "ravi shankar",
-  "license": "MIT",
-  "private": true,
-  "dependencies": {
-    "amqplib": "^0.10.3",
-    "axios": "^1.6.8",
-    "bullmq": "^4.8.0",
-    "connect-redis": "^7.1.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "ioredis": "^5.3.2",
-    "morgan": "^1.10.0",
-    "openai": "^4.32.1",
-    "pg": "^8.11.5",
-    "sequelize": "^6.37.2"
+    "name": "root",
+    "version": "1.0.0",
+    "description": "Root package.json for managing Node.js and Python environments",
+    "scripts": {
+      "install": "bash scripts/install.sh",
+      "dev:node": "cd packages/express && node app.js",
+      "dev:python": "cd packages/python && pipenv run python app.py"
+    }
   }
-}
+  

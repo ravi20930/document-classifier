@@ -1,5 +1,5 @@
 const { DataTypes, Model } = require("sequelize");
-const { sequelize } = require("./db.config");
+const { sequelize } = require("../config/db.config");
 
 class UserPrompts extends Model {}
 

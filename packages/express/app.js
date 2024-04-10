@@ -1,13 +1,13 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env" });
 const express = require("express");
 const morgan = require("morgan");
 const axios = require("axios");
 const cors = require("cors");
 
 const amqp = require("amqplib");
-const { connectDb } = require("./db.config");
-const UserPrompts = require("./db.model");
-const { PORT, DB_SYNC_FLAG, NODE_ENV, AMQP_URL, FLASK_SERVICE_URL } =
+const { connectDb } = require("./config/db.config");
+const UserPrompts = require("./models/db.model");
+const { EXPRESS_PORT, DB_SYNC_FLAG, NODE_ENV, AMQP_URL, FLASK_SERVICE_URL } =
   process.env;
 const shouldSync = DB_SYNC_FLAG === "true";
 
@@ -71,11 +71,11 @@ app.get("/api", async (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, async () => {
+app.listen(EXPRESS_PORT, async () => {
   await connectDb(shouldSync); // pass "true" to alter tables
   console.info(
     "🚀 Express server started at port %d in %s mode. Time: %s",
-    PORT,
+    EXPRESS_PORT,
     NODE_ENV,
     new Date().toLocaleString()
   );
