@@ -27,4 +27,8 @@ pipenv install
 
 # Install Node.js dependencies
 cd ../express
-npm install
+yarn install
+
+# Next dependencies
+cd ../next
+yarn install

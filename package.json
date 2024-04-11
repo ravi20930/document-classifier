@@ -2,10 +2,21 @@
     "name": "root",
     "version": "1.0.0",
     "description": "Root package.json for managing Node.js and Python environments",
+    "private": "true",
+    "workspaces": [
+      "packages/*"
+    ],
     "scripts": {
       "install": "bash scripts/install.sh",
-      "dev:node": "cd packages/express && node app.js",
-      "dev:python": "cd packages/python && pipenv run python app.py"
+      "dev:express": "cd packages/express && yarn dev",
+      "dev:next": "cd packages/next && yarn dev",
+      "dev:python": "cd packages/python && pipenv run python app.py",
+      "build": "yarn workspaces run build",
+      "lint": "eslint .",
+      "lint:fix": "eslint . --fix",
+      "format": "npx prettier --write .",
+      "cleanup": "npx depcheck",
+      "play": "ts-node-dev --respawn --transpile-only playground.ts"
     }
   }
   

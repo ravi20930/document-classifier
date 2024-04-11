@@ -1,0 +1,43 @@
+/* styles/fonts.css */
+
+@font-face {
+  font-family: "dd-bold";
+  src: url("../../public/fonts/dd-bold.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "dd-light";
+  src: url("../../public/fonts/dd-light.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "dd-medium";
+  src: url("../../public/fonts/dd-medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "dd-regular";
+  src: url("../../public/fonts/dd-regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "dd-semibold";
+  src: url("../../public/fonts/dd-semibold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "dd-thin";
+  src: url("../../public/fonts/dd-thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}

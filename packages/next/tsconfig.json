@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "esnext",
+    "strictNullChecks": true
+  },
+  "include": [".next/types/**/*.ts", "**/*.ts", "**/*.tsx"]
+}

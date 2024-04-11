@@ -8,6 +8,8 @@ flask = "*"
 hugchat = "*"
 flask-cors = "*"
 python-dotenv = "*"
+easyocr = "*"
+numpy = "*"
 
 [dev-packages]
 

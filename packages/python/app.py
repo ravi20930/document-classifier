@@ -6,6 +6,10 @@ import os
 from hugchat import hugchat
 from hugchat.login import Login
 from dotenv import load_dotenv
+import easyocr
+import numpy as np
+from PIL import Image
+import re
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
@@ -55,6 +59,50 @@ def process_prompt():
     except Exception as e:
         logging.error(f"Error processing prompt: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+    
+
+@app.route("/process-image", methods=["POST"])
+def process_image():
+    try:
+        # Get image file from request
+        image_file = request.files['image']
+        category = request.form.get('category')
+
+        image = Image.open(image_file)
+        image_np = np.array(image)
+
+        reader = easyocr.Reader(['en'])
+        # Read text from image using EasyOCR
+        result = reader.readtext(image_np)
+        # print("EasyOCR Result:", result)
+
+        # Extract text from result
+        extracted_text = ' '.join([text[1] for text in result])
+
+        filtered_text = filter_text(extracted_text)
+
+        return jsonify({"text": filtered_text.strip(), "label": category}), 200
+
+    except Exception as e:
+        logging.error(f"Error processing image: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+    
+def filter_text(text):
+    # Convert text to lowercase
+    text = text.lower()
+
+    # Define regex pattern to remove non-alphabetic characters
+    pattern = r'[^a-z\s]'
+
+    # Apply regex pattern to remove unwanted elements from text
+    filtered_text = re.sub(pattern, '', text)
+
+    # Replace multiple spaces with single space
+    filtered_text = re.sub(r'\s+', ' ', filtered_text)
+
+    return filtered_text.strip()
+
+
 
 if __name__ == "__main__":
     app.run(port=int(FLASK_PORT), debug=True)
