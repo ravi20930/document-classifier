@@ -1,62 +1,94 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, AdamW
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+from torch.optim import AdamW as TorchAdamW
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Read data from CSV file
-data = pd.read_csv('/content/data.csv')
+data = pd.read_csv('/content/8labels.csv')
 
 # Extract texts and labels
 texts = data['text'].tolist()
 labels = data['label'].tolist()
 
 # Define categories
-categories = ['education', 'religious', 'legal']
+categories = [
+    "Personal & Lifestyle",
+    "Work & Business",
+    "Education & Learning",
+    "Financial & Legal",
+    "Health & Medical",
+    "Travel & Leisure",
+    "Entertainment & Media",
+    "Utilities & Miscellaneous",
+]
 
 # Define label mapping dynamically
 label_mapping = {category: i for i, category in enumerate(categories)}
 y = np.array([label_mapping.get(label, -1) for label in labels])
 
-# Tokenize and encode the text data using BERT tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
-encoded_data = tokenizer(texts, padding=True, truncation=True, max_length=128, return_tensors='pt')
-
-# Create TensorDataset
-dataset = TensorDataset(encoded_data['input_ids'], encoded_data['attention_mask'], torch.tensor(y))
+# Data preprocessing
+# You may need additional preprocessing steps here such as removing stop words, stemming, or lemmatization.
 
 # Split data into train and test sets
-train_dataset, test_dataset = train_test_split(dataset, test_size=0.1, random_state=42)
+train_texts, test_texts, train_labels, test_labels = train_test_split(texts, y, test_size=0.1, random_state=42)
+
+# Tokenize and encode the text data using DistilBERT tokenizer
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+test_encodings = tokenizer(test_texts, truncation=True, padding=True)
+
+# Create TensorDatasets
+train_dataset = TensorDataset(torch.tensor(train_encodings['input_ids']),
+                              torch.tensor(train_encodings['attention_mask']),
+                              torch.tensor(train_labels))
+
+test_dataset = TensorDataset(torch.tensor(test_encodings['input_ids']),
+                             torch.tensor(test_encodings['attention_mask']),
+                             torch.tensor(test_labels))
 
 # Define batch size
 batch_size = 32
 
-# Create DataLoader
+# Create DataLoaders
 train_dataloader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
 
-# Load pre-trained BERT model for sequence classification
-model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=len(categories))
+# Load pre-trained DistilBERT model for sequence classification
+model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(categories))
 
-# Define optimizer
-optimizer = AdamW(model.parameters(), lr=2e-5)
+# Define optimizer and scheduler
+optimizer = TorchAdamW(model.parameters(), lr=2e-5)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
+
+# Define training parameters
+num_epochs = 4
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 # Train the model
-num_epochs = 4
 for epoch in range(num_epochs):
     print(f'Epoch {epoch + 1}/{num_epochs}')
     model.train()
     total_loss = 0
     for batch in train_dataloader:
-        input_ids, attention_masks, labels = batch
+        batch = tuple(t.to(device) for t in batch)
+        inputs = {'input_ids': batch[0],
+                  'attention_mask': batch[1],
+                  'labels': batch[2]}
         optimizer.zero_grad()
-        outputs = model(input_ids, attention_mask=attention_masks, labels=labels)
+        outputs = model(**inputs)
         loss = outputs.loss
         total_loss += loss.item()
         loss.backward()
         optimizer.step()
     print(f'Training loss: {total_loss/len(train_dataloader)}')
+
+    # Optionally, apply learning rate scheduler
+    scheduler.step()
 
 # Evaluate the model
 model.eval()
@@ -64,19 +96,29 @@ predictions = []
 true_labels = []
 
 for batch in test_dataloader:
-    input_ids, attention_masks, labels = batch
+    batch = tuple(t.to(device) for t in batch)
+    inputs = {'input_ids': batch[0],
+              'attention_mask': batch[1]}
     with torch.no_grad():
-        outputs = model(input_ids, attention_mask=attention_masks)
+        outputs = model(**inputs)
     logits = outputs.logits
     batch_predictions = logits.argmax(dim=1).cpu().numpy()
     predictions.extend(batch_predictions)
-    true_labels.extend(labels.cpu().numpy())
+    true_labels.extend(batch[2].cpu().numpy())
 
-# Calculate accuracy
-accuracy = np.mean(np.array(predictions) == np.array(true_labels))
+# Calculate evaluation metrics
+accuracy = accuracy_score(true_labels, predictions)
+precision = precision_score(true_labels, predictions, average='macro')
+recall = recall_score(true_labels, predictions, average='macro')
+f1 = f1_score(true_labels, predictions, average='macro')
+
 print(f'Test Accuracy: {accuracy}')
+print(f'Precision: {precision}')
+print(f'Recall: {recall}')
+print(f'F1 Score: {f1}')
 
-# Prediction
+
+
 def predict_labels(model, tokenizer, sentences, label_mapping):
     encoded_sentences = tokenizer(sentences, padding=True, truncation=True, max_length=128, return_tensors='pt')
     input_ids = encoded_sentences['input_ids']
@@ -90,43 +132,62 @@ def predict_labels(model, tokenizer, sentences, label_mapping):
     predicted_labels = [label_mapping[index] for index in predicted_class_indices]
     return predicted_labels
 
-# Example usage
 sentences = [
-    # Educational
-    "The periodic table organizes elements according to their atomic structure.",
-    "The Renaissance was a period of artistic and intellectual flourishing in Europe.",
-    "Climate change is a complex issue with global environmental consequences.",
-    "Understanding basic programming concepts is valuable in many fields.",
-    "The human brain is a remarkably complex organ responsible for thought and behavior.",
-    "Scientific research has led to many groundbreaking medical advancements.",
-    "Studying philosophy helps develop critical thinking and analytical skills.",
-    "Knowledge of history provides context for understanding current events.",
-    "Learning about different cultures promotes global awareness and understanding.",
-    "The scientific method relies on experimentation and observation.",
+  # // Personal & Lifestyle
+  "I just finished reading a fascinating novel. It's amazing how a good book can transport you to another world.",
+  "Spent the afternoon gardening and it was so therapeutic. Nature has a way of calming the mind.",
+  "Today I tried a new recipe for dinner and it turned out delicious! Cooking is such a fun and creative outlet.",
+  "Took some time to meditate this morning. It's important to prioritize mental health and mindfulness.",
+  "Binge-watched my favorite TV show all weekend. Sometimes you just need a little escapism.",
 
-    # Religious
-    "The Bible is a sacred text for Christians.",
-    "Many religions emphasize the importance of compassion and forgiveness.",
-    "Religious beliefs often provide a sense of community and belonging.",
-    "Meditation is a practice found in various spiritual traditions.",
-    "Pilgrimages are journeys to places of religious significance.",
-    "The Quran is the central religious text of Islam.",
-    "Faith can be a source of strength and guidance in difficult times.",
-    "Religious holidays and festivals are important in many cultures.",
-    "Different religions have varying beliefs about the afterlife.",
-    "The concept of karma is found in Hinduism and Buddhism.",
+  # // Work & Business
+  "Had a productive meeting with the team today. Excited about the new project we're working on.",
+  "Finished up a big presentation for tomorrow. Hoping it goes well!",
+  "Received positive feedback from a client today. It's always rewarding to know your work is appreciated.",
+  "Spent the day networking at a conference. Met some interesting people in the industry.",
+  "Working late tonight to meet a deadline. The hustle never stops!",
 
-    # Legal
-    "The Constitution is the supreme law of the United States.",
-    "Laws are created by legislatures and interpreted by courts.",
-    "Contracts are legally binding agreements between parties.",
-    "A jury determines guilt or innocence in a criminal trial.",
-    "Civil lawsuits resolve disputes between individuals or organizations.",
-    "Traffic laws are designed to promote road safety.",
-    "Laws protect intellectual property, such as patents and copyrights.",
-    "It is important to understand your legal rights as a citizen.",
-    "Lawyers provide legal advice and representation in court.",
-    "Tax laws determine how much individuals and businesses owe in taxes."
+  # // Education & Learning
+  "Started learning a new language today. It's challenging but exciting!",
+  "Attended a workshop on digital marketing strategies. Always eager to expand my skillset.",
+  "Reading up on quantum physics for fun. Always fascinated by the mysteries of the universe.",
+  "Took an online course on photography techniques. Can't wait to put my new skills into practice.",
+  "Volunteered to tutor students in math. It's fulfilling to help others learn and grow.",
+
+  # // Financial & Legal
+  "Met with a financial advisor to review my investment portfolio. Planning for the future is important.",
+  "Filed my taxes early this year. Feels good to have that task out of the way.",
+  "Consulted with a lawyer about a legal matter. It's always wise to seek professional advice.",
+  "Started a budgeting spreadsheet to track my expenses. Money management is key to financial stability.",
+  "Received a raise at work! Hard work pays off.",
+
+  # // Health & Medical
+  "Went for a run this morning to kickstart the day. Exercise is essential for both physical and mental health.",
+  "Scheduled a check-up with my doctor. Regular health screenings are important for early detection.",
+  "Trying out a new diet plan to improve my eating habits. Health is wealth!",
+  "Practiced yoga before bed to unwind and relax. It's amazing how it helps me sleep better.",
+  "Cut out sugary drinks from my diet. Small changes can lead to big health improvements.",
+
+  # // Travel & Leisure
+  "Planning a weekend getaway to the beach. Can't wait to soak up the sun and relax.",
+  "Booked a spontaneous trip to Paris! Sometimes you just have to seize the moment.",
+  "Hiking in the mountains is my favorite way to disconnect and recharge.",
+  "Visited a new museum in town. Always love exploring art and culture.",
+  "Camping under the stars tonight. Nature is the ultimate therapy.",
+
+  # // Entertainment & Media
+  "Watched the latest blockbuster movie and it was incredible! The special effects were mind-blowing.",
+  "Attended a live concert last night. There's something magical about live music.",
+  "Started a new TV series and I'm already hooked. Can't wait to see what happens next!",
+  "Listening to my favorite podcast on the way to work. It's a great way to start the day.",
+  "Played board games with friends over the weekend. Nothing beats good old-fashioned fun.",
+
+  # // Utilities & Miscellaneous
+  "Installed a smart thermostat to save energy and reduce utility bills. Technology can be so convenient!",
+  "Organized my closet and donated clothes I no longer wear. Decluttering feels liberating.",
+  "Invested in a good quality mattress for better sleep. Quality sleep is essential for overall well-being.",
+  "Subscribed to a meal delivery service to save time on cooking. Convenience at its finest!",
+  "Started journaling as a way to reflect on my thoughts and emotions. It's been surprisingly therapeutic.",
 ]
 
 reverse_label_mapping = {v: k for k, v in label_mapping.items()}
