@@ -3,6 +3,7 @@ node_modules/
 .venv/
 logs/
 cookies/
+docs/
 
 # Ignore built files
 *.log

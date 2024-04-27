@@ -10,6 +10,12 @@ flask-cors = "*"
 python-dotenv = "*"
 easyocr = "*"
 numpy = "*"
+pypdf2 = "*"
+pdf2image = "*"
+wand = "*"
+pytesseract = "*"
+fitz = "*"
+pymupdf = "*"
 
 [dev-packages]
 

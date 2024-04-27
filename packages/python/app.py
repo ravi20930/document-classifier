@@ -10,6 +10,7 @@ import easyocr
 import numpy as np
 from PIL import Image
 import re
+import pytesseract
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
@@ -81,9 +82,37 @@ def process_image():
 
         filtered_text = filter_text(extracted_text)
 
-        return jsonify({"text": filtered_text.strip(), "label": category}), 200
+        return jsonify({"text": extracted_text.strip(), "label": category}), 200
 
     except Exception as e:
+        logging.error(f"Error processing image: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+    
+
+@app.route("/process-imaget", methods=["POST"])
+def process_imaget():
+    try:
+        # Get image file from request
+        image_file = request.files['image']
+        category = request.form.get('category')
+
+        image = Image.open(image_file)
+
+        # Convert image to grayscale
+        image_gray = image.convert('L')
+
+        # Perform OCR using Pytesseract
+        extracted_text = pytesseract.image_to_string(image_gray, config='--psm 6')
+
+        print("Pytesseract Result:", extracted_text)
+
+        # Filter and process extracted text if needed
+        # filtered_text = filter_text(extracted_text)
+
+        return jsonify({"text": extracted_text.strip(), "label": category}), 200
+
+    except Exception as e:
+        print("Error:", e)  # Print the error for debugging
         logging.error(f"Error processing image: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
     
