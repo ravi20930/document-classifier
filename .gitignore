@@ -5,6 +5,7 @@ logs/
 cookies/
 docs/
 *.pth
+*.safetensors
 
 # Ignore built files
 *.log

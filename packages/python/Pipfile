@@ -18,6 +18,8 @@ fitz = "*"
 pymupdf = "*"
 transformers = "*"
 torch = "*"
+pandas = "*"
+scikit-learn = "*"
 
 [dev-packages]
 

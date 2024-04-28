@@ -1,18 +1,18 @@
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, AdamW
 import torch
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler
-from torch.optim import AdamW as TorchAdamW
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, AdamW
+# import numpy as np
+# import pandas as pd
+# from sklearn.model_selection import train_test_split
+# from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+# from torch.optim import AdamW as TorchAdamW
+# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-# Read data from CSV file
-data = pd.read_csv('../../../datasets/8labels.csv')
+# # Read data from CSV file
+# data = pd.read_csv('../../../datasets/8labels.csv')
 
-# Extract texts and labels
-texts = data['text'].tolist()
-labels = data['label'].tolist()
+# # Extract texts and labels
+# texts = data['text'].tolist()
+# labels = data['label'].tolist()
 
 # Define categories
 categories = [
@@ -27,98 +27,106 @@ categories = [
 ]
 
 # Define label mapping dynamically
-label_mapping = {category: i for i, category in enumerate(categories)}
-y = np.array([label_mapping.get(label, -1) for label in labels])
+# label_mapping = {category: i for i, category in enumerate(categories)}
+# y = np.array([label_mapping.get(label, -1) for label in labels])
 
-# Data preprocessing
-# You may need additional preprocessing steps here such as removing stop words, stemming, or lemmatization.
+# # Data preprocessing
+# # You may need additional preprocessing steps here such as removing stop words, stemming, or lemmatization.
 
-# Split data into train and test sets
-train_texts, test_texts, train_labels, test_labels = train_test_split(texts, y, test_size=0.1, random_state=42)
+# # Split data into train and test sets
+# train_texts, test_texts, train_labels, test_labels = train_test_split(texts, y, test_size=0.1, random_state=42)
 
-# Tokenize and encode the text data using DistilBERT tokenizer
-tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-train_encodings = tokenizer(train_texts, truncation=True, padding=True)
-test_encodings = tokenizer(test_texts, truncation=True, padding=True)
+# # Tokenize and encode the text data using DistilBERT tokenizer
+# tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+# train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+# test_encodings = tokenizer(test_texts, truncation=True, padding=True)
 
-# Create TensorDatasets
-train_dataset = TensorDataset(torch.tensor(train_encodings['input_ids']),
-                              torch.tensor(train_encodings['attention_mask']),
-                              torch.tensor(train_labels))
+# # Create TensorDatasets
+# train_dataset = TensorDataset(torch.tensor(train_encodings['input_ids']),
+#                               torch.tensor(train_encodings['attention_mask']),
+#                               torch.tensor(train_labels))
 
-test_dataset = TensorDataset(torch.tensor(test_encodings['input_ids']),
-                             torch.tensor(test_encodings['attention_mask']),
-                             torch.tensor(test_labels))
+# test_dataset = TensorDataset(torch.tensor(test_encodings['input_ids']),
+#                              torch.tensor(test_encodings['attention_mask']),
+#                              torch.tensor(test_labels))
 
-# Define batch size
-batch_size = 32
+# # Define batch size
+# batch_size = 32
 
-# Create DataLoaders
-train_dataloader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size)
-test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
+# # Create DataLoaders
+# train_dataloader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=batch_size)
+# test_dataloader = DataLoader(test_dataset, batch_size=batch_size)
 
-# Load pre-trained DistilBERT model for sequence classification
-model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(categories))
+# # Load pre-trained DistilBERT model for sequence classification
+# model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=len(categories))
 
-# Define optimizer and scheduler
-optimizer = TorchAdamW(model.parameters(), lr=2e-5)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
+# # Define optimizer and scheduler
+# optimizer = TorchAdamW(model.parameters(), lr=2e-5)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
 
-# Define training parameters
-num_epochs = 4
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
+# # Define training parameters
+# num_epochs = 4
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# model.to(device)
 
-# Train the model
-for epoch in range(num_epochs):
-    print(f'Epoch {epoch + 1}/{num_epochs}')
-    model.train()
-    total_loss = 0
-    for batch in train_dataloader:
-        batch = tuple(t.to(device) for t in batch)
-        inputs = {'input_ids': batch[0],
-                  'attention_mask': batch[1],
-                  'labels': batch[2]}
-        optimizer.zero_grad()
-        outputs = model(**inputs)
-        loss = outputs.loss
-        total_loss += loss.item()
-        loss.backward()
-        optimizer.step()
-    print(f'Training loss: {total_loss/len(train_dataloader)}')
+# # Train the model
+# for epoch in range(num_epochs):
+#     print(f'Epoch {epoch + 1}/{num_epochs}')
+#     model.train()
+#     total_loss = 0
+#     for batch in train_dataloader:
+#         batch = tuple(t.to(device) for t in batch)
+#         inputs = {'input_ids': batch[0],
+#                   'attention_mask': batch[1],
+#                   'labels': batch[2]}
+#         optimizer.zero_grad()
+#         outputs = model(**inputs)
+#         loss = outputs.loss
+#         total_loss += loss.item()
+#         loss.backward()
+#         optimizer.step()
+#     print(f'Training loss: {total_loss/len(train_dataloader)}')
 
-    # Optionally, apply learning rate scheduler
-    scheduler.step()
+#     # Optionally, apply learning rate scheduler
+#     scheduler.step()
 
-# Evaluate the model
-model.eval()
-predictions = []
-true_labels = []
+# # Evaluate the model
+# model.eval()
+# predictions = []
+# true_labels = []
 
-for batch in test_dataloader:
-    batch = tuple(t.to(device) for t in batch)
-    inputs = {'input_ids': batch[0],
-              'attention_mask': batch[1]}
-    with torch.no_grad():
-        outputs = model(**inputs)
-    logits = outputs.logits
-    batch_predictions = logits.argmax(dim=1).cpu().numpy()
-    predictions.extend(batch_predictions)
-    true_labels.extend(batch[2].cpu().numpy())
+# for batch in test_dataloader:
+#     batch = tuple(t.to(device) for t in batch)
+#     inputs = {'input_ids': batch[0],
+#               'attention_mask': batch[1]}
+#     with torch.no_grad():
+#         outputs = model(**inputs)
+#     logits = outputs.logits
+#     batch_predictions = logits.argmax(dim=1).cpu().numpy()
+#     predictions.extend(batch_predictions)
+#     true_labels.extend(batch[2].cpu().numpy())
 
-# Calculate evaluation metrics
-accuracy = accuracy_score(true_labels, predictions)
-precision = precision_score(true_labels, predictions, average='macro')
-recall = recall_score(true_labels, predictions, average='macro')
-f1 = f1_score(true_labels, predictions, average='macro')
+# # Calculate evaluation metrics
+# accuracy = accuracy_score(true_labels, predictions)
+# precision = precision_score(true_labels, predictions, average='macro')
+# recall = recall_score(true_labels, predictions, average='macro')
+# f1 = f1_score(true_labels, predictions, average='macro')
 
-print(f'Test Accuracy: {accuracy}')
-print(f'Precision: {precision}')
-print(f'Recall: {recall}')
-print(f'F1 Score: {f1}')
+# print(f'Test Accuracy: {accuracy}')
+# print(f'Precision: {precision}')
+# print(f'Recall: {recall}')
+# print(f'F1 Score: {f1}')
 
+# # save model
+# tokenizer.save_pretrained("./saved.model/tokenizer")
+# model.save_pretrained("./saved.model/")
+# print("Model and tokenizer saved successfully.")
 
-def predict_labels(model, tokenizer, sentences, label_mapping):
+# load model
+loaded_tokenizer = DistilBertTokenizer.from_pretrained("./saved.model/tokenizer")
+loaded_model = DistilBertForSequenceClassification.from_pretrained("./saved.model")
+
+def predict_labels(model, tokenizer, sentences, categories):
     # Move model to appropriate device (CPU or GPU)
     device = next(model.parameters()).device  # Get device of the model
     model.to(device)
@@ -138,10 +146,13 @@ def predict_labels(model, tokenizer, sentences, label_mapping):
 
     # Obtain predicted class indices and map them to labels
     predicted_class_indices = logits.argmax(dim=1).tolist()
-    predicted_labels = [label_mapping[index] for index in predicted_class_indices]
+    # label_mapping = {category: i for i, category in enumerate(categories)}
+    reverse_label_mapping = {v: k for k, v in {category: i for i, category in enumerate(categories)}.items()}
+    predicted_labels = [reverse_label_mapping[index] for index in predicted_class_indices]
 
     return predicted_labels
 
+# Define sentences
 sentences = [
   # # // Personal & Lifestyle
   # "I just finished reading a fascinating novel. It's amazing how a good book can transport you to another world.",
@@ -200,8 +211,9 @@ sentences = [
   "This is a gold coin from stone age.",
 ]
 
-reverse_label_mapping = {v: k for k, v in label_mapping.items()}
-predicted_labels = predict_labels(model, tokenizer, sentences, reverse_label_mapping)
+# Perform prediction using loaded model and tokenizer
+predicted_labels = predict_labels(loaded_model, loaded_tokenizer, sentences, categories)
 
+# Print predicted labels
 for sentence, label in zip(sentences, predicted_labels):
     print(f"'{sentence}' - Predicted Label: {label}")
