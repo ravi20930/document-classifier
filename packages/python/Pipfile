@@ -16,6 +16,8 @@ wand = "*"
 pytesseract = "*"
 fitz = "*"
 pymupdf = "*"
+transformers = "*"
+torch = "*"
 
 [dev-packages]
 

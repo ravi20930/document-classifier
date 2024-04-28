@@ -83,32 +83,38 @@ class PDFTextExtractor:
                         pix = page.get_pixmap()
                         if pix.n > 0:
                             has_images = True
-                            print(f"Image found")
-                            logging.info(f"Image found")
                             output_folder = os.path.join(os.path.dirname(pdf_path), "images", os.path.splitext(os.path.basename(pdf_path))[0])
                             os.makedirs(output_folder, exist_ok=True)
                             image_path = os.path.join(output_folder, f"page_{page_num + 1}.jpg")
                             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                             img.save(image_path)
-                            images.append(image_path)
+                            image_texts = ImageProcessor.process_images([image_path])
+                            text += ' '.join(image_texts)
+                            total_char_count += len(' '.join(image_texts))
+                            if total_char_count > 2000:  # Stop processing if total character count exceeds 2000
+                                print("Total character count exceeds 2000. Stopping processing.")
+                                logging.info("Total character count exceeds 2000. Stopping processing.")
+                                break
                 else:
                     pix = page.get_pixmap()
                     if pix.n > 0:
                         has_images = True
-                        print(f"Image found")
-                        logging.info(f"Image found")
                         output_folder = os.path.join(os.path.dirname(pdf_path), "images", os.path.splitext(os.path.basename(pdf_path))[0])
                         os.makedirs(output_folder, exist_ok=True)
                         image_path = os.path.join(output_folder, f"page_{page_num + 1}.jpg")
                         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                         img.save(image_path)
-                        images.append(image_path)
+                        image_texts = ImageProcessor.process_images([image_path])
+                        text += ' '.join(image_texts)
+                        total_char_count += len(' '.join(image_texts))
+                        if total_char_count > 2000:  # Stop processing if total character count exceeds 2000
+                            print("Total character count exceeds 2000. Stopping processing.")
+                            logging.info("Total character count exceeds 2000. Stopping processing.")
+                            break
         except Exception as e:
             print(f"Error occurred while processing {pdf_path}: {e}")
             logging.error(f"Error occurred while processing {pdf_path}: {e}")
-            return "", False, 0, 0, []  # Return empty text, False for has_images, and 0 for page_count and total_char_count in case of error
         return text.strip(), has_images, page_count, total_char_count, images
-
 
 class ImageProcessor:
     @staticmethod
