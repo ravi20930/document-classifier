@@ -1,21 +1,18 @@
+import os
+import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
-import logging
-import os
-# from hugchat import hugchat
-# from hugchat.login import Login
 from dotenv import load_dotenv
-import easyocr
-import numpy as np
-from PIL import Image
-import re
-import pytesseract
-import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
-
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
+# Import necessary functions from ml_models other files
+from ocr import with_easyocr, with_pytesseract
+from chat import ChatBotManager
+from text_cleaner import remove_meaningless_words
+from ml_models.classification_bert import predict_labels
+
+
+# Initialize Flask app
 app = Flask(__name__)
 CORS(app, origins="*")
 
@@ -23,168 +20,67 @@ CORS(app, origins="*")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Retrieve EMAIL, PASSWD, NODEJS_SERVICE_URL, and FLASK_PORT from environment variables
-EMAIL = os.environ.get('EMAIL')
-PASSWD = os.environ.get('PASSWD')
-NODEJS_SERVICE_URL = os.environ.get('NODEJS_SERVICE_URL')
-FLASK_PORT = os.environ.get('FLASK_PORT', 8000)  # Default port is 8000 if FLASK_PORT is not set
-
-if EMAIL is None or PASSWD is None or NODEJS_SERVICE_URL is None:
-    raise ValueError("EMAIL, PASSWD, or NODEJS_SERVICE_URL environment variables are not set.")
-
-# # Initialize HugChat
-# cookie_path_dir = "./cookies"
-# sign = Login(EMAIL, PASSWD)
-# cookies = sign.login(cookie_dir_path=cookie_path_dir, save_cookies=True)
-# chatbot = hugchat.ChatBot(cookies=cookies.get_dict())
-
 @app.route('/')
 def home():
     return 'Hello, World!'
 
-# # Endpoint to process prompts
-# @app.route("/process-prompt", methods=["POST"])
-# def process_prompt():
-#     try:
-#         data = request.json
-#         prompt = data['prompt']
-#         prompt_id = data['id']
+@app.route("/process-prompt", methods=["POST"])
+def process_prompt():
+    try:
+        data = request.json
+        prompt = data.get('prompt')
 
-#         # Process prompt with HugChat
-#         response = chatbot.chat(prompt)
+        if not prompt:
+            return jsonify({"error": "Prompt not provided"}), 400
 
-#         # Trigger Node.js API with response and prompt ID
-#         payload = {"promptId": prompt_id, "response": str(response).strip()}
-#         expResponse = requests.post(NODEJS_SERVICE_URL+"/api/response", json=payload)
-#         expResponse.raise_for_status()
+        chatbot_manager = ChatBotManager()
+        chatbot = chatbot_manager.chatbot()
 
-#         return jsonify({"message": "Prompt response updated successfully", "data": str(response).strip()}), 200
-#     except Exception as e:
-#         logging.error(f"Error processing prompt: {e}")
-#         return jsonify({"error": "Internal Server Error"}), 500
+        response = chatbot.chat(prompt)
+
+        return jsonify({"message": "Prompt processed successfully", "response": str(response).strip()}), 200
+    except Exception as e:
+        logging.error(f"Error processing prompt: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
     
-
 @app.route("/process-image", methods=["POST"])
 def process_image():
     try:
-        # Get image file from request
         image_file = request.files['image']
         category = request.form.get('category')
+        model = request.form.get('model', 'easyocr')
 
-        image = Image.open(image_file)
-        image_np = np.array(image)
-
-        reader = easyocr.Reader(['en'])
-        # Read text from image using EasyOCR
-        result = reader.readtext(image_np)
-        # print("EasyOCR Result:", result)
-
-        # Extract text from result
-        extracted_text = ' '.join([text[1] for text in result])
-
-        filtered_text = filter_text(extracted_text)
+        if model == 'easyocr':
+            extracted_text = with_easyocr(image_file)
+        elif model == 'pytesseract':
+            extracted_text = with_pytesseract(image_file)
+        else:
+            return jsonify({"error": "Invalid model choice"}), 400
 
         return jsonify({"text": extracted_text.strip(), "label": category}), 200
-
     except Exception as e:
         logging.error(f"Error processing image: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
-    
 
-@app.route("/process-imaget", methods=["POST"])
-def process_imaget():
-    try:
-        # Get image file from request
-        image_file = request.files['image']
-        category = request.form.get('category')
-
-        image = Image.open(image_file)
-
-        # Convert image to grayscale
-        image_gray = image.convert('L')
-
-        # Perform OCR using Pytesseract
-        extracted_text = pytesseract.image_to_string(image_gray, config='--psm 6')
-
-        print("Pytesseract Result:", extracted_text)
-
-        # Filter and process extracted text if needed
-        # filtered_text = filter_text(extracted_text)
-
-        return jsonify({"text": extracted_text.strip(), "label": category}), 200
-
-    except Exception as e:
-        print("Error:", e)  # Print the error for debugging
-        logging.error(f"Error processing image: {e}")
-        return jsonify({"error": "Internal Server Error"}), 500
-    
-def filter_text(text):
-    # Convert text to lowercase
-    text = text.lower()
-
-    # Define regex pattern to remove non-alphabetic characters
-    pattern = r'[^a-z\s]'
-
-    # Apply regex pattern to remove unwanted elements from text
-    filtered_text = re.sub(pattern, '', text)
-
-    # Replace multiple spaces with single space
-    filtered_text = re.sub(r'\s+', ' ', filtered_text)
-
-    return filtered_text.strip()
-
-
-categories = [
-    "Personal & Lifestyle",
-    "Work & Business",
-    "Education & Learning",
-    "Financial & Legal",
-    "Health & Medical",
-    "Travel & Leisure",
-    "Entertainment & Media",
-    "Utilities & Miscellaneous",
-]
-
-# Load tokenizer and model
-loaded_tokenizer = DistilBertTokenizer.from_pretrained("./ml.models/saved.model/tokenizer")
-loaded_model = DistilBertForSequenceClassification.from_pretrained("./ml.models/saved.model")
-
-# API endpoint to predict labels for given sentences
 @app.route("/predict-labels", methods=["POST"])
 def predict_labels_api():
     try:
-        # Get sentences from request data
         data = request.json
-        sentences = data["sentences"]
+        sentences = data.get("sentences", [])
 
-        # Predict labels for sentences
-        predicted_labels = predict_labels(loaded_model, loaded_tokenizer, sentences, categories)
+        if not sentences:
+            return jsonify({"error": "No sentences provided"}), 400
 
-        # Create response with sentences and predicted labels
+        sentences = remove_meaningless_words(sentences)
+        predicted_labels = predict_labels(sentences)
+
         response = {sentence: label for sentence, label in zip(sentences, predicted_labels)}
         
         return jsonify(response), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Function to predict labels for given sentences
-def predict_labels(model, tokenizer, sentences, categories):
-    # Encode sentences
-    encoded_sentences = tokenizer(sentences, padding=True, truncation=True, max_length=128, return_tensors='pt')
-
-    # Perform inference on the model
-    with torch.no_grad():
-        outputs = model(**encoded_sentences)
-    
-    # Get predicted class indices
-    predicted_class_indices = torch.argmax(outputs.logits, dim=1).tolist()
-    
-    # Map indices to labels
-    predicted_labels = [categories[index] for index in predicted_class_indices]
-    
-    return predicted_labels
-
-
+        logging.error(f"Error predicting labels: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
 
 if __name__ == "__main__":
-    app.run(port=int(FLASK_PORT), debug=True)
+    port = int(os.environ.get("FLASK_PORT", 8000))
+    app.run(port=port, debug=True)

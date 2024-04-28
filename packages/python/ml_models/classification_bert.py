@@ -1,3 +1,4 @@
+import os
 import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, AdamW
 # import numpy as np
@@ -25,7 +26,6 @@ categories = [
     "Entertainment & Media",
     "Utilities & Miscellaneous",
 ]
-
 # Define label mapping dynamically
 # label_mapping = {category: i for i, category in enumerate(categories)}
 # y = np.array([label_mapping.get(label, -1) for label in labels])
@@ -122,11 +122,16 @@ categories = [
 # model.save_pretrained("./saved.model/")
 # print("Model and tokenizer saved successfully.")
 
-# load model
-loaded_tokenizer = DistilBertTokenizer.from_pretrained("./saved.model/tokenizer")
-loaded_model = DistilBertForSequenceClassification.from_pretrained("./saved.model")
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-def predict_labels(model, tokenizer, sentences, categories):
+# Define the path to the saved model directory relative to the current script file
+saved_model_dir = os.path.join(current_dir, 'saved_model')
+tokenizer_dir = os.path.join(saved_model_dir, 'tokenizer')
+
+model = DistilBertForSequenceClassification.from_pretrained(saved_model_dir)
+tokenizer = DistilBertTokenizer.from_pretrained(tokenizer_dir)
+
+def predict_labels(sentences):
     # Move model to appropriate device (CPU or GPU)
     device = next(model.parameters()).device  # Get device of the model
     model.to(device)
@@ -152,68 +157,68 @@ def predict_labels(model, tokenizer, sentences, categories):
 
     return predicted_labels
 
-# Define sentences
-sentences = [
-  # # // Personal & Lifestyle
-  # "I just finished reading a fascinating novel. It's amazing how a good book can transport you to another world.",
-  # "Spent the afternoon gardening and it was so therapeutic. Nature has a way of calming the mind.",
-  # "Today I tried a new recipe for dinner and it turned out delicious! Cooking is such a fun and creative outlet.",
-  # "Took some time to meditate this morning. It's important to prioritize mental health and mindfulness.",
-  # "Binge-watched my favorite TV show all weekend. Sometimes you just need a little escapism.",
+# # Define sentences
+# sentences = [
+#   # # // Personal & Lifestyle
+#   # "I just finished reading a fascinating novel. It's amazing how a good book can transport you to another world.",
+#   # "Spent the afternoon gardening and it was so therapeutic. Nature has a way of calming the mind.",
+#   # "Today I tried a new recipe for dinner and it turned out delicious! Cooking is such a fun and creative outlet.",
+#   # "Took some time to meditate this morning. It's important to prioritize mental health and mindfulness.",
+#   # "Binge-watched my favorite TV show all weekend. Sometimes you just need a little escapism.",
 
-  # # // Work & Business
-  # "Had a productive meeting with the team today. Excited about the new project we're working on.",
-  # "Finished up a big presentation for tomorrow. Hoping it goes well!",
-  # "Received positive feedback from a client today. It's always rewarding to know your work is appreciated.",
-  # "Spent the day networking at a conference. Met some interesting people in the industry.",
-  # "Working late tonight to meet a deadline. The hustle never stops!",
+#   # # // Work & Business
+#   # "Had a productive meeting with the team today. Excited about the new project we're working on.",
+#   # "Finished up a big presentation for tomorrow. Hoping it goes well!",
+#   # "Received positive feedback from a client today. It's always rewarding to know your work is appreciated.",
+#   # "Spent the day networking at a conference. Met some interesting people in the industry.",
+#   # "Working late tonight to meet a deadline. The hustle never stops!",
 
-  # # // Education & Learning
-  # "Started learning a new language today. It's challenging but exciting!",
-  # "Attended a workshop on digital marketing strategies. Always eager to expand my skillset.",
-  # "Reading up on quantum physics for fun. Always fascinated by the mysteries of the universe.",
-  # "Took an online course on photography techniques. Can't wait to put my new skills into practice.",
-  # "Volunteered to tutor students in math. It's fulfilling to help others learn and grow.",
+#   # # // Education & Learning
+#   # "Started learning a new language today. It's challenging but exciting!",
+#   # "Attended a workshop on digital marketing strategies. Always eager to expand my skillset.",
+#   # "Reading up on quantum physics for fun. Always fascinated by the mysteries of the universe.",
+#   # "Took an online course on photography techniques. Can't wait to put my new skills into practice.",
+#   # "Volunteered to tutor students in math. It's fulfilling to help others learn and grow.",
 
-  # # // Financial & Legal
-  # "Met with a financial advisor to review my investment portfolio. Planning for the future is important.",
-  # "Filed my taxes early this year. Feels good to have that task out of the way.",
-  # "Consulted with a lawyer about a legal matter. It's always wise to seek professional advice.",
-  # "Started a budgeting spreadsheet to track my expenses. Money management is key to financial stability.",
-  # "Received a raise at work! Hard work pays off.",
+#   # # // Financial & Legal
+#   # "Met with a financial advisor to review my investment portfolio. Planning for the future is important.",
+#   # "Filed my taxes early this year. Feels good to have that task out of the way.",
+#   # "Consulted with a lawyer about a legal matter. It's always wise to seek professional advice.",
+#   # "Started a budgeting spreadsheet to track my expenses. Money management is key to financial stability.",
+#   # "Received a raise at work! Hard work pays off.",
 
-  # // Health & Medical
-  # "Went for a run this morning to kickstart the day. Exercise is essential for both physical and mental health.",
-  # "Scheduled a check-up with my doctor. Regular health screenings are important for early detection.",
-  # "Trying out a new diet plan to improve my eating habits. Health is wealth!",
-  # "Practiced yoga before bed to unwind and relax. It's amazing how it helps me sleep better.",
-  # "Cut out sugary drinks from my diet. Small changes can lead to big health improvements.",
+#   # // Health & Medical
+#   # "Went for a run this morning to kickstart the day. Exercise is essential for both physical and mental health.",
+#   # "Scheduled a check-up with my doctor. Regular health screenings are important for early detection.",
+#   # "Trying out a new diet plan to improve my eating habits. Health is wealth!",
+#   # "Practiced yoga before bed to unwind and relax. It's amazing how it helps me sleep better.",
+#   # "Cut out sugary drinks from my diet. Small changes can lead to big health improvements.",
 
-  # // Travel & Leisure
-  # "Planning a weekend getaway to the beach. Can't wait to soak up the sun and relax.",
-  # "Booked a spontaneous trip to Paris! Sometimes you just have to seize the moment.",
-  # "Hiking in the mountains is my favorite way to disconnect and recharge.",
-  # "Visited a new museum in town. Always love exploring art and culture.",
-  "Your offer letter for amazon has arrived ",
+#   # // Travel & Leisure
+#   # "Planning a weekend getaway to the beach. Can't wait to soak up the sun and relax.",
+#   # "Booked a spontaneous trip to Paris! Sometimes you just have to seize the moment.",
+#   # "Hiking in the mountains is my favorite way to disconnect and recharge.",
+#   # "Visited a new museum in town. Always love exploring art and culture.",
+#   "Your offer letter for amazon has arrived ",
 
-  # // Entertainment & Media
-  "Battery low for system",
-  "tarak mehta ka ulta chasma.",
-  "world war 3 will be for water.",
-  "AMAZON, FLIPKART EMAILS CAN BE FRAUD.",
-  "Collect span email from my inbox.",
+#   # // Entertainment & Media
+#   "Battery low for system",
+#   "tarak mehta ka ulta chasma.",
+#   "world war 3 will be for water.",
+#   "AMAZON, FLIPKART EMAILS CAN BE FRAUD.",
+#   "Collect span email from my inbox.",
 
-  # // Utilities & Miscellaneous
-  "blood is everywhere.",
-  "My blood sugar is low.",
-  "Compromise is key for good marriage.",
-  "doremon is my favorite show",
-  "This is a gold coin from stone age.",
-]
+#   # // Utilities & Miscellaneous
+#   "blood is everywhere.",
+#   "My blood sugar is low.",
+#   "Compromise is key for good marriage.",
+#   "doremon is my favorite show",
+#   "This is a gold coin from stone age.",
+# ]
 
-# Perform prediction using loaded model and tokenizer
-predicted_labels = predict_labels(loaded_model, loaded_tokenizer, sentences, categories)
+# # Perform prediction using loaded model and tokenizer
+# predicted_labels = predict_labels(sentences)
 
-# Print predicted labels
-for sentence, label in zip(sentences, predicted_labels):
-    print(f"'{sentence}' - Predicted Label: {label}")
+# # Print predicted labels
+# for sentence, label in zip(sentences, predicted_labels):
+#     print(f"'{sentence}' - Predicted Label: {label}")
