@@ -1,12 +1,22 @@
 import os
 import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 import numpy as np
 import pandas as pd
+import re
+from string import punctuation
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 from torch.optim import AdamW as TorchAdamW
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from collections import Counter
+
+# Download NLTK resources
+nltk.download('stopwords')
+nltk.download('punkt')
 
 # Define categories
 categories = [
@@ -20,26 +30,75 @@ categories = [
     "Utilities & Miscellaneous",
 ]
 
+# Define stopwords set
+stopwords_set = set(stopwords.words('english'))
+
+def filter_text(text):
+    """Apply text filtering."""
+    # Convert text to lowercase
+    filtered_text = text.lower()
+    
+    # Keep only alphabets
+    filtered_text = re.sub(r'[^a-zA-Z]', ' ', filtered_text)
+    
+    # Remove extra whitespaces
+    filtered_text = re.sub(r'\s+', ' ', filtered_text)
+
+    # Tokenize the text
+    words = word_tokenize(filtered_text)
+    
+    # Remove stop words
+    filtered_text = ' '.join(word for word in words if word not in stopwords_set)
+    
+    return filtered_text
+
 def main():
-    # Absolute path to the CSV file
-    csv_file = os.path.abspath('../../../datasets/8labels.csv')
+    # Define main folder path
+    main_folder_path = os.path.abspath('../../../docs')
+
+    # Initialize lists to store texts and labels
+    texts = []
+    labels = []
+
+    # Iterate through subfolders in the main folder
+    for category in categories:
+        subfolder_path = os.path.join(main_folder_path, category)
+        if os.path.exists(subfolder_path):
+            for file in os.listdir(subfolder_path):
+                file_path = os.path.join(subfolder_path, file)
+                if os.path.isfile(file_path):
+                    # Read the file and extract text
+                    with open(file_path, "r", encoding="latin-1") as f:
+                        text = f.read()
+                    # Apply text filtering
+                    text = filter_text(text)
+                    # Append text and label to the lists
+                    texts.append(text)
+                    labels.append(category)
 
     # Read data from CSV file
-    data = pd.read_csv(csv_file)
-
-    # Extract texts and labels
-    texts = data['text'].tolist()
-    labels = data['label'].tolist()
+    csv_file_path = os.path.abspath('../../../datasets/8labels.csv')
+    if os.path.exists(csv_file_path):
+        csv_data = pd.read_csv(csv_file_path)
+        csv_texts = csv_data['text'].tolist()
+        csv_labels = csv_data['label'].tolist()
+        texts.extend(csv_texts)
+        labels.extend(csv_labels)
 
     # Define label mapping dynamically
     label_mapping = {category: i for i, category in enumerate(categories)}
     y = np.array([label_mapping.get(label, -1) for label in labels])
 
     # Data preprocessing
-    # You may need additional preprocessing steps here such as removing stop words, stemming, or lemmatization.
+    # You may need additional preprocessing steps here such as stemming or lemmatization.
 
-    # Split data into train and test sets
-    train_texts, test_texts, train_labels, test_labels = train_test_split(texts, y, test_size=0.1, random_state=42)
+    # Check if there are enough samples for the split
+    if len(texts) > 0:
+        # Split data into train and test sets
+        train_texts, test_texts, train_labels, test_labels = train_test_split(texts, y, test_size=0.1, random_state=42)
+    else:
+        print("Error: No samples available for training.")
+        return
 
     # Tokenize and encode the text data using DistilBERT tokenizer
     tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
@@ -123,8 +182,8 @@ def main():
     print(f'F1 Score: {f1}')
 
     # Save model
-    tokenizer.save_pretrained("./saved_model/tokenizer")
-    model.save_pretrained("./saved_model/")
+    tokenizer.save_pretrained("./saved_model2/tokenizer")
+    model.save_pretrained("./saved_model2/")
     print("Model and tokenizer saved successfully.")
 
 if __name__ == "__main__":
