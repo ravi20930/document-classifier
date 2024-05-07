@@ -1,10 +1,13 @@
 import os
 import re
 import csv
+import shutil
 import easyocr
 import fitz
 from PIL import Image
 import logging
+from text_cleaner import remove_meaningless_words
+from prediction import predict_labels
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,6 +24,8 @@ class PDFProcessor:
         for pdf_file in pdf_files:
             self.process_pdf(pdf_file)
         self.write_csv()
+        self.move_documents_to_folders()
+        self.delete_images_folder()
         print("PDF processing completed")
         logging.info("PDF processing completed")
 
@@ -49,11 +54,54 @@ class PDFProcessor:
     def write_csv(self):
         print("Writing CSV file")
         logging.info("Writing CSV file")
+
+        texts = [row[1] for row in self.csv_data[1:]]
+        print("Removing meaningless words...")
+        logging.info("Removing meaningless words...")
+        filtered_texts = remove_meaningless_words(texts)
+        print("Now predicting labels...")
+        logging.info("Now predicting labels...")
+        labels = predict_labels(filtered_texts)
+        
+        print("All set writing final csv...")
+        logging.info("All set writing final csv...")
+        for i, (filtered_text, label) in enumerate(zip(filtered_texts, labels)):
+            if filtered_text:
+                self.csv_data[i + 1][1] = filtered_text
+                self.csv_data[i + 1].append(label)
+            else:
+                self.csv_data[i + 1].append("")
+        
         with open(self.csv_file_path, "w", newline="", encoding="utf-8") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerows(self.csv_data)
         print(f"CSV file generated: {self.csv_file_path}")
         logging.info(f"CSV file generated: {self.csv_file_path}")
+
+    def move_documents_to_folders(self):
+        print("Moving documents to respective folders...")
+        logging.info("Moving documents to respective folders...")
+        # Read the CSV file and move documents to respective folders based on labels
+        with open(self.csv_file_path, newline="", encoding="utf-8") as csv_file:
+            reader = csv.reader(csv_file)
+            next(reader)  # Skip the header row
+            for row in reader:
+                pdf_file_name, _, label = row
+                label_folder = os.path.join(self.folder_path, label)
+                os.makedirs(label_folder, exist_ok=True)
+                source_path = os.path.join(self.folder_path, pdf_file_name)
+                destination_path = os.path.join(label_folder, pdf_file_name)
+                shutil.move(source_path, destination_path)
+        print("Documents moved to respective folders.")
+        logging.info("Documents moved to respective folders.")
+
+    def delete_images_folder(self):
+        print("Deleting images folder...")
+        logging.info("Deleting images folder...")
+        images_folder = os.path.join(self.folder_path, "images")
+        shutil.rmtree(images_folder, ignore_errors=True)
+        print("Images folder deleted.")
+        logging.info("Images folder deleted.")
 
 
 class PDFTextExtractor:
@@ -88,6 +136,7 @@ class PDFTextExtractor:
                             image_path = os.path.join(output_folder, f"page_{page_num + 1}.jpg")
                             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                             img.save(image_path)
+                            images.append(image_path)
                             image_texts = ImageProcessor.process_images([image_path])
                             text += ' '.join(image_texts)
                             total_char_count += len(' '.join(image_texts))
@@ -104,6 +153,7 @@ class PDFTextExtractor:
                         image_path = os.path.join(output_folder, f"page_{page_num + 1}.jpg")
                         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                         img.save(image_path)
+                        images.append(image_path)
                         image_texts = ImageProcessor.process_images([image_path])
                         text += ' '.join(image_texts)
                         total_char_count += len(' '.join(image_texts))

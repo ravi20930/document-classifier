@@ -9,7 +9,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 from ocr import with_easyocr, with_pytesseract
 from chat import ChatBotManager
 from text_cleaner import remove_meaningless_words
-from ml_models.classification_bert import predict_labels
+from prediction import predict_labels
 
 
 # Initialize Flask app
