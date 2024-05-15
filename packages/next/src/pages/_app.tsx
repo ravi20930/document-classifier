@@ -11,7 +11,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>weekend: swipe less, connect more!</title>
+        <title>Documents made easy!</title>
         <link
           rel="icon"
           href="favicon-16x16.png?<generated>"

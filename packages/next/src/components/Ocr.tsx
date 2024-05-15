@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { uploadFile, listPDFs } from "../api/user"; // Assuming these are your API endpoints
+import { uploadFile, listPDFs, viewPDF } from "../api/user";
 
 const PDFOcrPage = () => {
   const [files, setFiles] = useState({});
   const [errorMessage, setErrorMessage] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
 
   const handleFileUpload = async (event) => {
     const selectedFiles = event.target.files;
-    if (!selectedFiles.length) return; // Handle empty selection
+    if (!selectedFiles.length) return;
 
     const promises = [];
     for (const file of selectedFiles) {
@@ -23,7 +25,8 @@ const PDFOcrPage = () => {
     try {
       await Promise.all(promises);
       setErrorMessage(null);
-      fetchPDFs(); // Refresh the list after successful uploads
+      fetchPDFs();
+      toast.success(`${selectedFiles.length} file(s) uploaded successfully!`);
     } catch (error) {
       console.error("Error uploading files:", error);
       setErrorMessage("An error occurred during upload.");
@@ -40,9 +43,39 @@ const PDFOcrPage = () => {
     }
   };
 
+  const handleFileClick = async (folderName, fileName) => {
+    try {
+      const blobData = await viewPDF(folderName, fileName);
+      setModalContent(blobData);
+      setShowModal(true);
+    } catch (error) {
+      console.error("Error fetching PDF:", error);
+      setErrorMessage("An error occurred while fetching the PDF.");
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setModalContent(null);
+  };
+
   useEffect(() => {
-    fetchPDFs(); // Fetch PDFs on initial render
-  }, []);
+    fetchPDFs();
+
+    // Add event listener to close modal when clicked outside
+    const handleOutsideClick = (event) => {
+      if (showModal && !event.target.closest(".modal-content")) {
+        closeModal();
+      }
+    };
+
+    document.addEventListener("click", handleOutsideClick);
+
+    // Clean up event listener on component unmount
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+    };
+  }, [showModal]);
 
   return (
     <div className="flex flex-col items-center mt-10">
@@ -73,7 +106,7 @@ const PDFOcrPage = () => {
                     style={{
                       padding: "10px",
                       border: "1px solid #ddd",
-                      backgroundColor: `hsl(${180 + index * 30}, 80%, 90%)`, // Generate light shades with hue variation
+                      backgroundColor: `hsl(${180 + index * 30}, 80%, 90%)`,
                     }}
                   >
                     {folderName}
@@ -101,11 +134,22 @@ const PDFOcrPage = () => {
                           padding: "5px",
                           border: "1px solid #ddd",
                           backgroundColor:
-                            rowIndex % 2 === 0 ? "#fff" : "#e0e0e0", // Alternating row background colors
+                            rowIndex % 2 === 0 ? "#fff" : "#e0e0e0",
                         }}
                       >
                         {filesInFolder[rowIndex] && (
-                          <div className="truncate" style={{ width: "100px" }}>
+                          <div
+                            className="truncate cursor-pointer"
+                            style={{ width: "100px" }}
+                            onClick={() =>
+                              handleFileClick(
+                                Object.keys(files.pdf_files_by_folder)[
+                                  columnIndex
+                                ],
+                                filesInFolder[rowIndex]
+                              )
+                            }
+                          >
                             {filesInFolder[rowIndex].length > 10
                               ? `${filesInFolder[rowIndex].substring(0, 10)}...`
                               : filesInFolder[rowIndex]}
@@ -119,6 +163,29 @@ const PDFOcrPage = () => {
             )}
           </tbody>
         </table>
+      )}
+      {showModal && (
+        <div
+          className="fixed z-10 inset-0 overflow-y-auto"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+        >
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="bg-white rounded-lg p-8">
+              <iframe
+                src={URL.createObjectURL(modalContent)}
+                frameBorder="0"
+                width="800"
+                height="600"
+              ></iframe>
+              <button
+                className="bg-blue-500 text-white rounded-lg px-4 py-2 mt-4"
+                onClick={closeModal}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <ToastContainer />
     </div>
