@@ -24,6 +24,7 @@
     "next-google-fonts": "^2.2.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "react-modal": "^3.16.1",
     "react-toastify": "^10.0.4",
     "react-webcam": "^7.2.0",
     "tesseract.js": "^5.0.5"

@@ -1,142 +1,128 @@
-import React, { useState, useRef } from "react";
-import Tesseract from "tesseract.js";
-import Webcam from "react-webcam";
+import React, { useState, useEffect } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { uploadImage } from "../api/user";
+import { uploadFile, listPDFs } from "../api/user"; // Assuming these are your API endpoints
 
-const OCRPage = () => {
-  const [text, setText] = useState("");
-  const [category, setCategory] = useState("");
-  const [categories, setCategories] = useState([
-    "Personal & Lifestyle",
-    "Work & Business",
-    "Education & Learning",
-    "Financial & Legal",
-    "Health & Medical",
-    "Travel & Leisure",
-    "Entertainment & Media",
-    "Utilities & Miscellaneous",
-  ]);
-  const [showCamera, setShowCamera] = useState(false);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const webcamRef = useRef(null);
+const PDFOcrPage = () => {
+  const [files, setFiles] = useState({});
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    const {
-      data: { text },
-    } = await Tesseract.recognize(file, "eng", {
-      logger: (m) => console.log(m),
-    });
-    setText(text);
-    setCapturedImage(URL.createObjectURL(file));
-  };
+  const handleFileUpload = async (event) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles.length) return; // Handle empty selection
 
-  const handleCaptureImage = async () => {
-    const imageData = webcamRef.current.getScreenshot();
-    const {
-      data: { text },
-    } = await Tesseract.recognize(imageData, "eng", {
-      logger: (m) => console.log(m),
-    });
-    setText(text);
-    setCapturedImage(imageData);
-    setShowCamera(false);
-  };
-
-  const handleCategoryChange = (event) => {
-    setCategory(event.target.value);
-  };
-
-  const handleSaveDocument = async () => {
-    try {
-      // Ensure an image is selected
-      if (!capturedImage) {
-        toast.error("Please capture or upload an image.");
+    const promises = [];
+    for (const file of selectedFiles) {
+      if (!file.name.endsWith(".pdf")) {
+        setErrorMessage("Only PDF files are allowed.");
         return;
       }
+      promises.push(uploadFile(file));
+    }
 
-      // Call the image upload API
-      await uploadImage(capturedImage);
-      toast.success("Document saved successfully!");
-      setCapturedImage(null);
+    try {
+      await Promise.all(promises);
+      setErrorMessage(null);
+      fetchPDFs(); // Refresh the list after successful uploads
     } catch (error) {
-      toast.error("Error saving document");
+      console.error("Error uploading files:", error);
+      setErrorMessage("An error occurred during upload.");
     }
   };
 
+  const fetchPDFs = async () => {
+    try {
+      const data = await listPDFs();
+      setFiles(data);
+    } catch (error) {
+      console.error("Error fetching PDFs:", error);
+      setErrorMessage("An error occurred while fetching PDFs.");
+    }
+  };
+
+  useEffect(() => {
+    fetchPDFs(); // Fetch PDFs on initial render
+  }, []);
+
   return (
     <div className="flex flex-col items-center mt-10">
-      <h1 className="text-3xl mb-4">OCR Page</h1>
+      <h1 className="text-3xl mb-4">Document Classifier</h1>
       <label
-        htmlFor="imageInput"
+        htmlFor="pdfInput"
         className="bg-blue-500 text-white rounded-lg px-4 py-2 cursor-pointer mb-4"
       >
-        Upload Image
+        Upload PDFs
       </label>
       <input
-        id="imageInput"
+        id="pdfInput"
         type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
+        accept=".pdf"
+        multiple
+        onChange={handleFileUpload}
         className="hidden"
       />
-      <button
-        onClick={() => setShowCamera(true)}
-        className="bg-purple-500 text-white rounded-lg px-4 py-2 mb-4"
-      >
-        Capture Image
-      </button>
-      {showCamera && (
-        <div className="mb-4">
-          <Webcam
-            audio={false}
-            screenshotFormat="image/jpeg"
-            width={320}
-            height={240}
-            ref={webcamRef}
-          />
-          <button
-            onClick={handleCaptureImage}
-            className="bg-purple-500 text-white rounded-lg px-4 py-2 mt-4"
-          >
-            Take Picture
-          </button>
-        </div>
+      {errorMessage && <div className="text-red-500 mb-4">{errorMessage}</div>}
+      {Object.keys(files).length > 0 && (
+        <table style={{ border: "1px solid #ddd", margin: "10px" }}>
+          <thead>
+            <tr>
+              {Object.keys(files.pdf_files_by_folder).map(
+                (folderName, index) => (
+                  <th
+                    key={index}
+                    style={{
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      backgroundColor: `hsl(${180 + index * 30}, 80%, 90%)`, // Generate light shades with hue variation
+                    }}
+                  >
+                    {folderName}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from(
+              {
+                length: Math.max(
+                  ...Object.values(files.pdf_files_by_folder).map(
+                    (files) => files.length
+                  )
+                ),
+              },
+              (_, rowIndex) => (
+                <tr key={rowIndex}>
+                  {Object.values(files.pdf_files_by_folder).map(
+                    (filesInFolder, columnIndex) => (
+                      <td
+                        key={columnIndex}
+                        style={{
+                          padding: "5px",
+                          border: "1px solid #ddd",
+                          backgroundColor:
+                            rowIndex % 2 === 0 ? "#fff" : "#e0e0e0", // Alternating row background colors
+                        }}
+                      >
+                        {filesInFolder[rowIndex] && (
+                          <div className="truncate" style={{ width: "100px" }}>
+                            {filesInFolder[rowIndex].length > 10
+                              ? `${filesInFolder[rowIndex].substring(0, 10)}...`
+                              : filesInFolder[rowIndex]}
+                          </div>
+                        )}
+                      </td>
+                    )
+                  )}
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
       )}
-      {text && (
-        <div className="text-lg text-gray-700 mb-4">Extracted Text: {text}</div>
-      )}
-      {capturedImage && (
-        <img
-          src={capturedImage}
-          alt="Captured"
-          className="mb-4"
-          style={{ maxWidth: "100%", maxHeight: "300px" }}
-        />
-      )}
-      <select
-        value={category}
-        onChange={handleCategoryChange}
-        className="bg-gray-200 rounded-lg px-4 py-2 mb-4"
-      >
-        <option value="">Select Category</option>
-        {categories.map((cat, index) => (
-          <option key={index} value={cat}>
-            {cat}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={handleSaveDocument}
-        className="bg-green-500 text-white rounded-lg px-4 py-2"
-      >
-        Save Document
-      </button>
       <ToastContainer />
     </div>
   );
 };
 
-export default OCRPage;
+export default PDFOcrPage;

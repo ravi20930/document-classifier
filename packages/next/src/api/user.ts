@@ -1,28 +1,56 @@
 import axios from "axios";
-import FormData from "form-data";
 
-const uploadImage = async (file: File, token: string) => {
+const uploadFile = async (file: File) => {
   try {
-    const data = new FormData();
-    data.append("images", file);
+    const formData = new FormData();
+    formData.append("files", file);
 
     const config = {
       method: "post",
-      maxBodyLength: Infinity,
-      url: "http://localhost:3009/api/user/upload-image",
+      url: "http://127.0.0.1:8000/upload", // Replace if needed
       headers: {
-        Authorization: `Bearer ${token}`,
-        ...data.getHeaders(),
+        "Content-Type": "multipart/form-data", // Set for PDF uploads
       },
-      data: data,
+      data: formData,
     };
 
     const response = await axios.request(config);
     return response.data;
   } catch (error) {
-    console.error("Error uploading image:", error);
+    console.error("Error uploading file:", error);
     throw error;
   }
 };
 
-export { uploadImage };
+const listPDFs = async () => {
+  try {
+    const config = {
+      method: "get",
+      url: "http://127.0.0.1:8000/list-pdfs", // Replace if needed
+    };
+
+    const response = await axios.request(config);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching PDFs:", error);
+    throw error;
+  }
+};
+
+const viewPDF = async (folder: string, filename: string) => {
+  try {
+    const config = {
+      method: "get",
+      url: `http://127.0.0.1:8000/download/${folder}/${filename}`,
+      responseType: "blob",
+    };
+
+    const response = await axios.request(config);
+    return new Blob([response.data], { type: "application/pdf" });
+  } catch (error) {
+    console.error("Error viewing PDF:", error);
+    throw error;
+  }
+};
+
+export { uploadFile, listPDFs, viewPDF };
