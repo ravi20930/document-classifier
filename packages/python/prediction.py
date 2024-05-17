@@ -98,9 +98,9 @@ if __name__ == "__main__":
 
     # Perform prediction using loaded model and tokenizer
     predicted_labels = predict_labels(sentences)
-    print(f"{predicted_labels}")
+    # print(f"{predicted_labels}")
 
 
-    # # Print predicted labels
-    # for sentence, label in zip(sentences, predicted_labels):
-    #     print(f"'{sentence}' - Predicted Label: {label}")
+    # Print predicted labels
+    for sentence, label in zip(sentences, predicted_labels):
+        print(f"'{sentence}' - Predicted Label: {label}")

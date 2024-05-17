@@ -21,6 +21,9 @@ torch = "*"
 pandas = "*"
 scikit-learn = "*"
 nltk = "*"
+pdfplumber = "*"
+docx = "*"
+python-docx = "*"
 
 [dev-packages]
 

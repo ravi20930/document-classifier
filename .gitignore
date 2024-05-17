@@ -4,6 +4,7 @@ node_modules/
 logs/
 cookies/
 docs/
+train_docs/
 *.pth
 *.safetensors
 
