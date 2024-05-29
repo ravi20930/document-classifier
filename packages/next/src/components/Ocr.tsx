@@ -5,7 +5,6 @@ import { uploadFile, listPDFs, viewPDF } from "../api/user";
 
 const PDFOcrPage = () => {
   const [files, setFiles] = useState({});
-  const [errorMessage, setErrorMessage] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
 
@@ -13,33 +12,42 @@ const PDFOcrPage = () => {
     const selectedFiles = event.target.files;
     if (!selectedFiles.length) return;
 
-    const promises = [];
+    let allFilesValid = true;
     for (const file of selectedFiles) {
-      if (!file.name.endsWith(".pdf")) {
-        setErrorMessage("Only PDF files are allowed.");
-        return;
+      if (file.name.split(".").pop().toLowerCase() !== "pdf") {
+        allFilesValid = false;
+        break;
       }
-      promises.push(uploadFile(file));
     }
+
+    if (!allFilesValid) {
+      toast.error("Only PDF files are allowed.");
+      return;
+    }
+
+    const promises = Array.from(selectedFiles).map((file) => uploadFile(file));
 
     try {
       await Promise.all(promises);
-      setErrorMessage(null);
       fetchPDFs();
       toast.success(`${selectedFiles.length} file(s) uploaded successfully!`);
     } catch (error) {
       console.error("Error uploading files:", error);
-      setErrorMessage("An error occurred during upload.");
+      toast.error("An error occurred during upload.");
     }
   };
 
   const fetchPDFs = async () => {
     try {
       const data = await listPDFs();
-      setFiles(data);
+      if (data && data.pdf_files_by_folder) {
+        setFiles(data);
+      } else {
+        toast.error("No PDF files available. Please upload!");
+      }
     } catch (error) {
       console.error("Error fetching PDFs:", error);
-      setErrorMessage("An error occurred while fetching PDFs.");
+      toast.error("An error occurred while fetching PDFs.");
     }
   };
 
@@ -50,7 +58,7 @@ const PDFOcrPage = () => {
       setShowModal(true);
     } catch (error) {
       console.error("Error fetching PDF:", error);
-      setErrorMessage("An error occurred while fetching the PDF.");
+      toast.error("An error occurred while fetching the PDF.");
     }
   };
 
@@ -94,8 +102,9 @@ const PDFOcrPage = () => {
         onChange={handleFileUpload}
         className="hidden"
       />
-      {errorMessage && <div className="text-red-500 mb-4">{errorMessage}</div>}
-      {Object.keys(files).length > 0 && (
+      {files &&
+      files.pdf_files_by_folder &&
+      Object.keys(files.pdf_files_by_folder).length > 0 ? (
         <table style={{ border: "1px solid #ddd", margin: "10px" }}>
           <thead>
             <tr>
@@ -163,6 +172,8 @@ const PDFOcrPage = () => {
             )}
           </tbody>
         </table>
+      ) : (
+        <div className="text-gray-500">No PDF files available.</div>
       )}
       {showModal && (
         <div

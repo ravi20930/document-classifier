@@ -6,6 +6,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=1)
+
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 
 # Import necessary functions from ml_models other files
@@ -108,8 +111,10 @@ def upload_files():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-    thread = Thread(target=process_pdfs, args=(UPLOAD_FOLDER, "pdf_texts.csv"))
-    thread.start()
+    # thread = Thread(target=process_pdfs, args=(UPLOAD_FOLDER, "pdf_texts.csv"))
+    # thread.start()
+    executor.submit(process_pdfs, UPLOAD_FOLDER, "pdf_texts.csv")
+
 
     return jsonify({'message': 'All files uploaded and queued for processing successfully!'}), 200
 

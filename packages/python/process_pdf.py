@@ -81,19 +81,32 @@ class PDFProcessor:
     def move_documents_to_folders(self):
         print("Moving documents to respective folders...")
         logging.info("Moving documents to respective folders...")
+        
+        processed_files = set()  # Maintain a set of processed file names
+        
         # Read the CSV file and move documents to respective folders based on labels
         with open(self.csv_file_path, newline="", encoding="utf-8") as csv_file:
             reader = csv.reader(csv_file)
             next(reader)  # Skip the header row
             for row in reader:
                 pdf_file_name, _, label = row
-                label_folder = os.path.join(self.folder_path, label)
-                os.makedirs(label_folder, exist_ok=True)
-                source_path = os.path.join(self.folder_path, pdf_file_name)
-                destination_path = os.path.join(label_folder, pdf_file_name)
-                shutil.move(source_path, destination_path)
+                if pdf_file_name not in processed_files:  # Check if the file has already been processed
+                    label_folder = os.path.join(self.folder_path, label)
+                    os.makedirs(label_folder, exist_ok=True)
+                    source_path = os.path.join(self.folder_path, pdf_file_name)
+                    destination_path = os.path.join(label_folder, pdf_file_name)
+                    try:
+                        shutil.move(source_path, destination_path)
+                        processed_files.add(pdf_file_name)  # Add the file to the set of processed files
+                        print(f"Moved {pdf_file_name} to {label_folder}")
+                        logging.info(f"Moved {pdf_file_name} to {label_folder}")
+                    except FileNotFoundError:
+                        print(f"File not found: {pdf_file_name}")
+                        logging.warning(f"File not found: {pdf_file_name}")
+    
         print("Documents moved to respective folders.")
         logging.info("Documents moved to respective folders.")
+
 
     def delete_images_folder(self):
         print("Deleting images folder...")
